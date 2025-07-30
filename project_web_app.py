@@ -77,6 +77,12 @@ def tomato_disease_solution(disease):
     }
     return solutions.get(disease, "No solution available for the detected condition.")
 
+def is_valid_tomato_image(pred_label, confidence, threshold=50):
+    """Checks if prediction is tomato-related and above confidence threshold."""
+    if pred_label.lower() in class_names and confidence >= threshold:
+        return True
+    return False
+
 def predict(model, img):
     try:
         img = img.resize((256, 256))
@@ -87,8 +93,12 @@ def predict(model, img):
         index = np.argmax(predictions[0])
         label = class_names[index]
         confidence = round(100 * float(predictions[0][index]), 2)
-        solution = tomato_disease_solution(label)
-        return label, confidence, solution
+
+        if is_valid_tomato_image(label, confidence):
+            solution = tomato_disease_solution(label)
+            return label, confidence, solution
+        else:
+            return "Invalid", confidence, None
     except Exception as e:
         st.error(f"Error in prediction: {e}")
         return None, None, None
@@ -107,8 +117,10 @@ if page == "Home":
     st.header("Welcome to the Tomato Disease Classification System 🍅")
     st.markdown("""
     Use this tool to detect and manage tomato plant diseases using AI-powered image analysis.
-    - Upload or capture an image of a tomato leaf.
-    - Get instant disease prediction and treatment tips.
+    
+    ⚠️ **Important:**  
+    - This system is designed **only for tomato leaf images**.
+    - Uploading images of other objects (e.g., people, animals) will result in an **invalid input** warning.
     """)
 
 # PREDICTION PAGE
@@ -131,9 +143,13 @@ elif page == "Prediction":
         if st.button("Predict"):
             with st.spinner("Analyzing..."):
                 label, confidence, solution = predict(model, img)
-                if label:
+                if label == "Invalid":
+                    st.error("❌ Invalid input: Please upload an image of a **tomato leaf only**.")
+                elif label:
                     st.success(f"Prediction: **{label}** ({confidence}%)")
                     st.info(solution)
+                else:
+                    st.error("Prediction failed. Please try again.")
     else:
         st.warning("Please upload or capture an image to proceed.")
 
@@ -162,6 +178,7 @@ elif page == "FAQ":
         ("Can I trust the prediction?", "While highly accurate, always cross-verify with a local agricultural expert."),
         ("Is my data stored?", "No. Uploaded images are processed in memory and not stored."),
         ("What if I encounter an error?", "Check your image quality or contact support if the issue persists."),
+        ("Can I use other plant images?", "No. This system is only intended for tomato leaves. Other inputs will return 'Invalid'.")
     ]
 
     for q, a in faq_list:
